@@ -17,7 +17,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import ToolsRoutes
 from pydantic import BaseModel
 
 app = FastAPI()
