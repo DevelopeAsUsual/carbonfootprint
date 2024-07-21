@@ -231,7 +231,8 @@ def calculate_footprint(web_url):
 
 # if _name_ == '_main_':
 #     app.run(port=1234)
-
+class InputData(BaseModel):
+    url: str
 
 @app.post("/")
 async def handle_request(input_data: InputData):
