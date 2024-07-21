@@ -10,6 +10,20 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
+
+def get_webdriver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
+    )
+    return driver
+
+
 options = Options()
 options.add_argument("--headless=new")
 
@@ -66,7 +80,8 @@ def calculate_data_transfer(url):
     js_size_bytes = 0
     media_size_bytes = 0
     print("test 1")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = get_webdriver()
     print("test 2")
     driver.get(url)
     print("test 3")
