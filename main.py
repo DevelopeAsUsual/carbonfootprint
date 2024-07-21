@@ -65,11 +65,17 @@ def calculate_data_transfer(url):
     font_size_bytes = 0
     js_size_bytes = 0
     media_size_bytes = 0
+    print("test 1")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    print("test 2")
     driver.get(url)
+    print("test 3")
     html_content = driver.page_source
+    print("test 4")
     driver.quit()
+    print("test 5")
     soup = BeautifulSoup(html_content, 'html.parser')
+    print("test 6")
     if True:
         html_size_bytes = len(html_content)
         # Fetch CSS files and estimate data transfer
@@ -180,10 +186,15 @@ def cal_facts(Carbon):
 def calculate_footprint(web_url):
     try:
         data_gb = calculate_data_transfer(web_url)
+        print("test 7")
         totat_data = sum(data_gb)
+        print("test 8")
         green = check_green_website(web_url)
+        print("test 9")
         carbon = calculate_carbon(totat_data, green)
+        print("test 10")
         fact = cal_facts(carbon)
+        print("test 11")
         result = {
             'check': 1,
             'css_data_mb': round(data_gb[0] * 1024, 3),
