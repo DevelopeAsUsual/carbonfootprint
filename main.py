@@ -234,7 +234,7 @@ def calculate_footprint(web_url):
 class InputData(BaseModel):
     url: str
 
-@app.post("/")
+@app.get("/")
 async def handle_request(input_data: InputData):
     url = input_data.url
     result = calculate_footprint(url)
