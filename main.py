@@ -15,6 +15,10 @@ options.add_argument("--headless=new")
 
 from webdriver_manager.chrome import ChromeDriverManager
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import ToolsRoutes
+
 
 # Constants
 nonrenw_energytocarbon = 442 #g/kWh
