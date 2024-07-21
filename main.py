@@ -18,7 +18,16 @@ from webdriver_manager.chrome import ChromeDriverManager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import ToolsRoutes
+from pydantic import BaseModel
 
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Constants
 nonrenw_energytocarbon = 442 #g/kWh
@@ -212,14 +221,22 @@ def calculate_footprint(web_url):
         return result
 
 
-app = Flask(_name_)
-CORS(app)
-@app.route('/', methods=['GET', 'POST'])
-def handle_request():
-    text = str(request.args.get('input'))
-    result = calculate_footprint(text)
+# app = Flask(_name_)
+# CORS(app)
+# @app.route('/', methods=['GET', 'POST'])
+# def handle_request():
+#     text = str(request.args.get('input'))
+#     result = calculate_footprint(text)
+#     json_dump = json.dumps(result)
+#     return json_dump
+
+# if _name_ == '_main_':
+#     app.run(port=1234)
+
+
+@app.post("/")
+async def handle_request(input_data: InputData):
+    url = input_data.url
+    result = calculate_footprint(url)
     json_dump = json.dumps(result)
     return json_dump
-
-if _name_ == '_main_':
-    app.run(port=1234)
