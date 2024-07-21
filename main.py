@@ -1,38 +1,23 @@
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin,urlparse
+from urllib.parse import urljoin, urlparse
 import re
-import base64
-from flask import *
-from flask_cors import CORS
-import json
-
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+
 options = Options()
 options.add_argument("--headless=new")
 
-from webdriver_manager.chrome import ChromeDriverManager
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
 # Constants
-nonrenw_energytocarbon = 442 #g/kWh
-renw_energytocarbon = 50 #g/kWh
-datatoenergy = 0.81 #kWh/GB
-returning_customer = 0.75 + 0.02*0.25
+nonrenw_energytocarbon = 442  # g/kWh
+renw_energytocarbon = 50  # g/kWh
+datatoenergy = 0.81  # kWh/GB
+returning_customer = 0.75 + 0.02 * 0.25
 
 
 def fetch_resource_size(resource_url):
@@ -40,28 +25,40 @@ def fetch_resource_size(resource_url):
     if response.status_code == 200:
         content_length = response.headers.get('Content-Length')
         if content_length:
-          return int(content_length)
+            return int(content_length)
         else:
-          return len(response.content)
+            return len(response.content)
     else:
         return 0
 
 
 def getsource(tag):
     src = None
-    if not src: src = tag.get('src')
-    if not src: src = tag.get('data-src')
-    if not src: src = tag.get('data-gt-lazy-src')
-    if not src: src = tag.get('href')
-    if not src: src = tag.get('xlink:href')
-    if not src: src = tag.get('poster')
-    if not src: src = tag.get('srcset')
-    if not src: src = tag.get('data-url')
-    if not src: src = tag.get('data-example')
-    if not src: src = tag.get('action')
+    if not src:
+        src = tag.get('src')
+    if not src:
+        src = tag.get('data-src')
+    if not src:
+        src = tag.get('data-gt-lazy-src')
+    if not src:
+        src = tag.get('href')
+    if not src:
+        src = tag.get('xlink:href')
+    if not src:
+        src = tag.get('poster')
+    if not src:
+        src = tag.get('srcset')
+    if not src:
+        src = tag.get('data-url')
+    if not src:
+        src = tag.get('data-example')
+    if not src:
+        src = tag.get('action')
     if src:
-        if src.startswith("data:image/"): return None
+        if src.startswith("data:image/"):
+            return None
     return src
+
 
 def calculate_data_transfer(url):
     css_size_bytes = 0
@@ -90,7 +87,7 @@ def calculate_data_transfer(url):
                         continue
                     resource_or_font_size = fetch_resource_size(abs_url)
                     font_size_bytes += resource_or_font_size
-                    
+
         # Fetch JS files and estimate data transfer
         for script_tag in soup.find_all('script'):
             src = getsource(script_tag)
@@ -98,7 +95,7 @@ def calculate_data_transfer(url):
                 js_url = urljoin(url, src)
                 js_content = requests.get(js_url).content
                 js_size_bytes += len(js_content)
-                
+
                 # Parse JS content to find video and audio URLs
                 resource_urls = re.findall(r'src="(.*?)"', js_content.decode('utf-8'))
                 for res_url in resource_urls:
@@ -107,7 +104,7 @@ def calculate_data_transfer(url):
                     abs_url = urljoin(js_url, res_url)
                     res_size = fetch_resource_size(abs_url)
                     js_size_bytes += res_size
-                    
+
         # Fetch video and audio elements
         for video_tag in soup.find_all('video'):
             src = getsource(video_tag)
@@ -116,7 +113,6 @@ def calculate_data_transfer(url):
                 video_size = fetch_resource_size(video_url)
                 media_size_bytes += video_size
 
-        
         for audio_tag in soup.find_all('audio'):
             src = getsource(audio_tag)
             if src:
@@ -130,7 +126,7 @@ def calculate_data_transfer(url):
                 image_url = urljoin(url, src)
                 image_size = fetch_resource_size(image_url)
                 media_size_bytes += image_size
-        
+
         css_transfer_gb = css_size_bytes / (1024 ** 3)
         font_transfer_gb = font_size_bytes / (1024 ** 3)
         js_transfer_gb = js_size_bytes / (1024 ** 3)
@@ -139,8 +135,6 @@ def calculate_data_transfer(url):
         return css_transfer_gb, font_transfer_gb, js_transfer_gb, media_transfer_gb, html_transfer_gb
     else:
         raise Exception(f"Failed to fetch website content. Status code: {response.status_code}")
-
-
 
 
 def check_green_website(url):
@@ -153,33 +147,34 @@ def check_green_website(url):
     else:
         return False
 
-def calculate_carbon(data,green):
-    return nonrenw_energytocarbon*datatoenergy*data*returning_customer
+
+def calculate_carbon(data, green):
+    return nonrenw_energytocarbon * datatoenergy * data * returning_customer
+
 
 def cal_facts(Carbon):
     s = ["Check fact"]
     visits = 10000
     gm_to_kg = 0.001
-    tree_absorb = 1.81   #kg absorbed per month
+    tree_absorb = 1.81  # kg absorbed per month
     car_consume = 0.17
     flight_consume = 0.15
     earth_cir = 40075
 
-    tree_num = round( (Carbon*visits*gm_to_kg)/tree_absorb)
+    tree_num = round((Carbon * visits * gm_to_kg) / tree_absorb)
     tree_fact = f"Every 10,000 visits to this website is equivalent to the carbon dioxide absorbed by {tree_num} trees in one month."
     s.append(tree_fact)
 
     if Carbon < 8:
-        car_num = round( (Carbon*visits*gm_to_kg)/car_consume, 1)
+        car_num = round((Carbon * visits * gm_to_kg) / car_consume, 1)
         car_fact = f"Every 10,000 visits to this website is equivalent to the carbon dioxide released by {car_num} kms of car driving."
         s.append(car_fact)
     else:
-        fly_num = round( ((Carbon*visits*gm_to_kg*100)/flight_consume)/earth_cir, 1)
+        fly_num = round(((Carbon * visits * gm_to_kg * 100) / flight_consume) / earth_cir, 1)
         fly_fact = f"Every 10,000 visits to this website is equivalent to the carbon dioxide released by covering {fly_num}% of earth circumference in flight."
         s.append(fly_fact)
 
     return s
-
 
 
 def calculate_footprint(web_url):
@@ -190,14 +185,14 @@ def calculate_footprint(web_url):
         carbon = calculate_carbon(totat_data, green)
         fact = cal_facts(carbon)
         result = {
-            'check':1,
-            'css_data_mb': round(data_gb[0]*1024,3),
-            'font_data_mb': round(data_gb[1]*1024,3),
-            'js_data_mb': round(data_gb[2]*1024,3),
-            'media_data_mb': round(data_gb[3]*1024,3),
-            'html_data_mb': round(data_gb[4]*1024,3),
-            'total_data_mb': round(totat_data*1024,3),
-            'Carbon_footprint':carbon,
+            'check': 1,
+            'css_data_mb': round(data_gb[0] * 1024, 3),
+            'font_data_mb': round(data_gb[1] * 1024, 3),
+            'js_data_mb': round(data_gb[2] * 1024, 3),
+            'media_data_mb': round(data_gb[3] * 1024, 3),
+            'html_data_mb': round(data_gb[4] * 1024, 3),
+            'total_data_mb': round(totat_data * 1024, 3),
+            'Carbon_footprint': carbon,
             'Green_hosting': green,
             'fact1': fact[1],
             'fact2': fact[2],
@@ -205,7 +200,7 @@ def calculate_footprint(web_url):
         return result
     except Exception as e:
         result = {
-            'check':0,
+            'check': 0,
             'css_data_mb': 0.0,
             'font_data_mb': 0.0,
             'js_data_mb': 0.0,
@@ -220,23 +215,17 @@ def calculate_footprint(web_url):
         return result
 
 
-# app = Flask(_name_)
-# CORS(app)
-# @app.route('/', methods=['GET', 'POST'])
-# def handle_request():
-#     text = str(request.args.get('input'))
-#     result = calculate_footprint(text)
-#     json_dump = json.dumps(result)
-#     return json_dump
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
-# if _name_ == '_main_':
-#     app.run(port=1234)
-class InputData(BaseModel):
-    url: str
 
 @app.get("/")
-async def handle_request(input_data: InputData):
-    url = input_data.url
+async def handle_request(url: str = Query(..., description="The URL to calculate the carbon footprint for")):
     result = calculate_footprint(url)
-    json_dump = json.dumps(result)
-    return json_dump
+    return result
